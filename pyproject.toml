@@ -12,6 +12,7 @@ python = "^3.10"
 pydantic = "^1.10.7"
 python-dotenv = "^1.0.0"
 python-telegram-bot = "^20.2"
+orjson = "^3.8.11"
 
 
 [tool.poetry.group.dev.dependencies]
