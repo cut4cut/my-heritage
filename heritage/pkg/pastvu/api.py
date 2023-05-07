@@ -14,7 +14,10 @@ class PastvuAPI:
     def get_photo_info(self, cid: str) -> Tuple[str, str]:
         r = httpx.get(
             self._base_url,
-            params={"method": "photo.giveForPage", "params": f'{{"cid": {cid}}}'},
+            params={
+                "method": "photo.giveForPage",
+                "params": f'{{"cid": {cid}}}',
+            },
         )
         contents = orjson.loads(r.content).get("result", {}).get("photo", {})
         return contents.get("source", ""), contents.get("y", "")
@@ -37,7 +40,10 @@ class PastvuAPI:
             source, period = self.get_photo_info(data["cid"])
             photos.append(
                 Photo(
-                    geo=GeoPoint(latitude=data["geo"][0], longitude=data["geo"][1]),
+                    geo=GeoPoint(
+                        latitude=data["geo"][0],
+                        longitude=data["geo"][1],
+                    ),
                     title=data["title"],
                     file_name=data["file"],
                     cid=data["cid"],
