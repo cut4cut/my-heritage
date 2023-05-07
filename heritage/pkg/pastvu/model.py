@@ -23,7 +23,7 @@ class Photo(BaseModel):
 
 class Params(BaseModel):
     geo: GeoPoint = GeoPoint()
-    limit: int = 3
+    limit: int = 5
     skip: int = 0
 
     def next(self) -> None:
