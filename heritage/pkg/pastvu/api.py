@@ -3,7 +3,7 @@ from typing import List, Tuple
 import orjson
 import httpx
 
-from heritage.pkg.pastvu.models import GeoPoint, Photo, Params
+from heritage.pkg.pastvu.model import GeoPoint, Photo, Params
 
 
 class PastvuAPI:
@@ -39,7 +39,7 @@ class PastvuAPI:
                 Photo(
                     geo=GeoPoint(latitude=data["geo"][0], longitude=data["geo"][1]),
                     title=data["title"],
-                    file=data["file"],
+                    file_name=data["file"],
                     cid=data["cid"],
                     source=source,
                     period=period,

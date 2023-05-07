@@ -17,7 +17,7 @@ class Photo(BaseModel):
     title: str
     source: str
     period: str
-    file: str
+    file_name: str
     cid: int
 
 
