@@ -9,9 +9,14 @@ from telegram.ext import (
     filters,
 )
 
-from heritage.settings import Settings
+from heritage.cfg import Settings
+from heritage.pkg import PastvuAPI
+from heritage.usecase import MediaGroupUseCase
 
-# Enable logging
+
+api = PastvuAPI()
+settings = Settings()
+use_case = MediaGroupUseCase(api)
 
 
 logging.basicConfig(
@@ -43,17 +48,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def echo_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
-    logger.info(
-        f"location={update.message.location}, type={type(update.message.location)}"
-    )
     # await update.message.reply_location(latitude=update.message.location.latitude, longitude=update.message.location.longitude)
     # await context.bot.send_photo(chat_id=update.effective_chat.id, photo=Path("checker/53370.jpg"), caption="Это поезд")
     await update.message.reply_media_group(
         media=[
-            InputMediaPhoto(
-                open("checker/53370.jpg", "rb"), caption=f"Это поезд под номером {idx}"
+            InputMediaPhoto(photo.file, caption=photo.caption)
+            for photo in use_case.get_photos(
+                update.message.location.latitude, update.message.location.longitude
             )
-            for idx in range(5)
         ]
     )
 
@@ -61,7 +63,6 @@ async def echo_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    settings = Settings()
     application = Application.builder().token(settings.tg_token).build()
 
     # on different commands - answer in Telegram
@@ -69,8 +70,7 @@ def main() -> None:
     application.add_handler(CommandHandler("help", help_command))
 
     # on non command i.e message - echo the message on Telegram
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 
     application.add_handler(
         MessageHandler(filters.LOCATION & ~filters.COMMAND, echo_location)
