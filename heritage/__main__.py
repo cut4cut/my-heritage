@@ -1,6 +1,10 @@
 import logging
 
-from telegram import ForceReply, Update, InputMediaPhoto
+from telegram import (
+    Update,
+    InputMediaPhoto,
+    ReplyKeyboardMarkup,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -18,6 +22,8 @@ api = PastvuAPI()
 settings = Settings()
 use_case = MediaGroupUseCase(api)
 
+keyboard = [["🌍 Отправить геопозицию"], ["🔎 Ещё фото"]]
+reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -25,31 +31,38 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Define a few command handlers. These usually take the two arguments update and
-# context.
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
-    user = update.effective_user
+    message_html = f"""
+    Привет, {update.effective_user.mention_html()} 👋
+
+    Это телеграм бот для поиска архивных фото по местоположению, взятых с <a href="https://pastvu.com/">pastvu</a>
+
+    Для поиска достаточно отправить любую геопозицию или воспользоваться соотвествующей командой
+    """
     await update.message.reply_html(
-        rf"Hi {user.mention_html()}!",
-        reply_markup=ForceReply(selective=True),
+        message_html,
+        reply_markup=reply_markup,
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    await update.message.reply_text("Help!")
+    await update.message.reply_text(
+        "Этот бот работает с открытым архивом исторических фото. Отправь геопозицию, чтобы получить фото из прошлого 🕒"
+    )
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    await update.message.reply_text(update.message.text)
+async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Hand text input from user."""
+    await update.message.reply_text("Нужно отправить геопозицию 🌍")
 
 
-async def echo_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    # await update.message.reply_location(latitude=update.message.location.latitude, longitude=update.message.location.longitude)
-    # await context.bot.send_photo(chat_id=update.effective_chat.id, photo=Path("checker/53370.jpg"), caption="Это поезд")
+async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Get photos by geopoint."""
+    logger.info(
+        f"Get location=({update.message.location.latitude}, {update.message.location.longitude}) from user={update.effective_user.username}"
+    )
     await update.message.reply_media_group(
         media=[
             InputMediaPhoto(photo.file, caption=photo.caption)
@@ -62,21 +75,21 @@ async def echo_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 def main() -> None:
     """Start the bot."""
-    # Create the Application and pass it your bot's token.
     application = Application.builder().token(settings.tg_token).build()
 
-    # on different commands - answer in Telegram
+    # help logic
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
 
-    # on non command i.e message - echo the message on Telegram
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-
+    # main logic
     application.add_handler(
-        MessageHandler(filters.LOCATION & ~filters.COMMAND, echo_location)
+        MessageHandler(filters.TEXT & ~filters.COMMAND, hand_text_input)
     )
 
-    # Run the bot until the user presses Ctrl-C
+    application.add_handler(
+        MessageHandler(filters.LOCATION & ~filters.COMMAND, get_photos)
+    )
+
     application.run_polling()
 
 
