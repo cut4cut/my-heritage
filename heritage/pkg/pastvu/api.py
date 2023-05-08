@@ -11,36 +11,33 @@ class PastvuAPI:
         self._base_url = "https://pastvu.com/api2"
         self._image_url = "https://pastvu.com/_p/d/{0}"
 
-    async def get_photo_info(self, cid: str) -> Tuple[str, str]:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                self._base_url,
-                params={
-                    "method": "photo.giveForPage",
-                    "params": f'{{"cid": {cid}}}',
-                },
-            )
+    def get_photo_info(self, cid: str) -> Tuple[str, str]:
+        r = httpx.get(
+            self._base_url,
+            params={
+                "method": "photo.giveForPage",
+                "params": f'{{"cid": {cid}}}',
+            },
+        )
         contents = orjson.loads(r.content).get("result", {}).get("photo", {})
         return contents.get("source", ""), contents.get("y", "")
 
-    async def get_photo_file(self, file: str) -> bytes:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(self._image_url.format(file))
+    def get_photo_file(self, file: str) -> bytes:
+        r = httpx.get(self._image_url.format(file))
         return r.content
 
-    async def get_nearest_photos(self, params: Params) -> List[Photo]:
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                self._base_url,
-                params={
-                    "method": "photo.giveNearestPhotos",
-                    "params": params.json(models_as_dict=False),
-                },
-            )
+    def get_nearest_photos(self, params: Params) -> List[Photo]:
+        r = httpx.get(
+            self._base_url,
+            params={
+                "method": "photo.giveNearestPhotos",
+                "params": params.json(models_as_dict=False),
+            },
+        )
 
         photos = []
         for data in orjson.loads(r.content).get("result", {}).get("photos", {}):
-            source, period = await self.get_photo_info(data["cid"])
+            source, period = self.get_photo_info(data["cid"])
             photos.append(
                 Photo(
                     geo=GeoPoint(

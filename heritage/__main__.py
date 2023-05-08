@@ -1,5 +1,6 @@
 import logging
 
+import httpx
 from telegram import (
     Update,
     KeyboardButton,
@@ -73,7 +74,7 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_media_group(
             media=[
                 InputMediaPhoto(photo.file, caption=photo.caption)
-                for photo in await use_case.get_photos(
+                for photo in use_case.get_photos(
                     state.latitude, state.longitude, state.page
                 )
             ]
@@ -85,6 +86,11 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
     except KeyError:
         await update.message.reply_text("Нужно отправить геопозицию 🌍")
+    except httpx.ReadTimeout:
+        await update.message.reply_text(
+            "Что-то пошло не так. Выбери другое местоположение или вернись чуть позже ⌛"
+        )
+        context.chat_data["state"] = SearchState()
 
 
 async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -97,7 +103,7 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_media_group(
             media=[
                 InputMediaPhoto(photo.file, caption=photo.caption)
-                for photo in await use_case.get_photos(latitude, longitude)
+                for photo in use_case.get_photos(latitude, longitude)
             ]
         )
         context.chat_data["state"] = SearchState(
@@ -105,6 +111,11 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     except NoMorePhotos:
         await update.message.reply_text(
             "Фотографий рядом больше нет. Выбери другое местоположение 🌍"
+        )
+        context.chat_data["state"] = SearchState()
+    except httpx.ReadTimeout:
+        await update.message.reply_text(
+            "Что-то пошло не так. Выбери другое местоположение или вернись чуть позже ⌛"
         )
         context.chat_data["state"] = SearchState()
 
@@ -127,6 +138,7 @@ def main() -> None:
     )
 
     application.run_polling()
+    application.idle()
 
 
 if __name__ == "__main__":
