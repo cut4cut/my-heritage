@@ -62,15 +62,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Hand text input from user."""
+    username = update.effective_user.username
+    logger.info(f"Get text='{update.message.text}' from user={username}")
     if update.message.text != MORE_PHOTO:
         await update.message.reply_text("Нужно отправить геопозицию 🌍")
 
     try:
-        state = context.chat_data.get("state", SearchState())
+        state = context.chat_data["state"]
+        logger.info(f"Current state={state} from user={username}")
         await update.message.reply_media_group(
             media=[
                 InputMediaPhoto(photo.file, caption=photo.caption)
-                for photo in use_case.get_photos(
+                for photo in await use_case.get_photos(
                     state.latitude, state.longitude, state.page
                 )
             ]
@@ -80,6 +83,8 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text(
             "Фотографий рядом больше нет. Выбери другое местоположение 🌍"
         )
+    except KeyError:
+        await update.message.reply_text("Нужно отправить геопозицию 🌍")
 
 
 async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -92,7 +97,7 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_media_group(
             media=[
                 InputMediaPhoto(photo.file, caption=photo.caption)
-                for photo in use_case.get_photos(latitude, longitude)
+                for photo in await use_case.get_photos(latitude, longitude)
             ]
         )
         context.chat_data["state"] = SearchState(

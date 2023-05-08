@@ -9,7 +9,7 @@ class MediaGroupUseCase:
     def __init__(self, api: PastvuAPI) -> None:
         self.api = api
 
-    def get_photos(
+    async def get_photos(
         self, latitude: float, longitude: float, page: int = 0
     ) -> List[MediaPhoto]:
         parapms = Params(
@@ -19,8 +19,8 @@ class MediaGroupUseCase:
             )
         ).set_pagination(page)
         group = []
-        for photo in self.api.get_nearest_photos(parapms):
-            file = self.api.get_photo_file(photo.file_name)
+        for photo in await self.api.get_nearest_photos(parapms):
+            file = await self.api.get_photo_file(photo.file_name)
             group.append(
                 MediaPhoto(
                     file=file,
