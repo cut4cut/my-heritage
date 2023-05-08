@@ -1,7 +1,8 @@
 from typing import List
 
-from heritage.pkg import Params, PastvuAPI, GeoPoint
+from heritage.exc import NoMorePhotos
 from heritage.entity import MediaPhoto
+from heritage.pkg import Params, PastvuAPI, GeoPoint
 
 
 class MediaGroupUseCase:
@@ -27,4 +28,8 @@ class MediaGroupUseCase:
                     period=photo.period,
                 )
             )
-        return group
+
+        if group:
+            return group
+
+        raise NoMorePhotos
