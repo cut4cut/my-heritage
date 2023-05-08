@@ -2,6 +2,7 @@ import logging
 
 from telegram import (
     Update,
+    KeyboardButton,
     InputMediaPhoto,
     ReplyKeyboardMarkup,
 )
@@ -15,6 +16,9 @@ from telegram.ext import (
 
 from heritage.cfg import Settings
 from heritage.pkg import PastvuAPI
+from heritage.dto import SearchState
+from heritage.exc import NoMorePhotos
+from heritage.entity import SEND_GEOPOSITION, MORE_PHOTO
 from heritage.usecase import MediaGroupUseCase
 
 
@@ -22,7 +26,10 @@ api = PastvuAPI()
 settings = Settings()
 use_case = MediaGroupUseCase(api)
 
-keyboard = [["🌍 Отправить геопозицию"], ["🔎 Ещё фото"]]
+keyboard = [
+    [KeyboardButton(SEND_GEOPOSITION, request_location=True)],
+    [KeyboardButton(MORE_PHOTO)],
+]
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 logging.basicConfig(
@@ -55,22 +62,46 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Hand text input from user."""
-    await update.message.reply_text("Нужно отправить геопозицию 🌍")
+    if update.message.text != MORE_PHOTO:
+        await update.message.reply_text("Нужно отправить геопозицию 🌍")
+
+    try:
+        state = context.chat_data.get("state", SearchState())
+        await update.message.reply_media_group(
+            media=[
+                InputMediaPhoto(photo.file, caption=photo.caption)
+                for photo in use_case.get_photos(
+                    state.latitude, state.longitude, state.page
+                )
+            ]
+        )
+        state.shift()
+    except NoMorePhotos:
+        await update.message.reply_text(
+            "Фотографий рядом больше нет. Выбери другое местоположение 🌍"
+        )
 
 
 async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Get photos by geopoint."""
-    logger.info(
-        f"Get location=({update.message.location.latitude}, {update.message.location.longitude}) from user={update.effective_user.username}"
-    )
-    await update.message.reply_media_group(
-        media=[
-            InputMediaPhoto(photo.file, caption=photo.caption)
-            for photo in use_case.get_photos(
-                update.message.location.latitude, update.message.location.longitude
-            )
-        ]
-    )
+    latitude = update.message.location.latitude
+    longitude = update.message.location.longitude
+    username = update.effective_user.username
+    logger.info(f"Get location=({latitude}, {longitude}) from user={username}")
+    try:
+        await update.message.reply_media_group(
+            media=[
+                InputMediaPhoto(photo.file, caption=photo.caption)
+                for photo in use_case.get_photos(latitude, longitude)
+            ]
+        )
+        context.chat_data["state"] = SearchState(
+            latitude=latitude, longitude=longitude)
+    except NoMorePhotos:
+        await update.message.reply_text(
+            "Фотографий рядом больше нет. Выбери другое местоположение 🌍"
+        )
+        context.chat_data["state"] = SearchState()
 
 
 def main() -> None:
