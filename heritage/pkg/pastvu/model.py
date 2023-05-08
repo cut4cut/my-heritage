@@ -1,6 +1,6 @@
 import orjson
 from pydantic import BaseModel
-
+from typing import TypeVar
 
 def orjson_dumps(v, *, default):
     # orjson.dumps returns bytes, to match standard json.dumps we need to decode
@@ -26,8 +26,9 @@ class Params(BaseModel):
     limit: int = 5
     skip: int = 0
 
-    def next(self) -> None:
-        self.skip += self.limit
+    def set_pagination(self, page: int = 0):
+        self.skip = page * self.limit
+        return self
 
     class Config:
         json_loads = orjson.loads
