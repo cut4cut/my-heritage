@@ -23,6 +23,7 @@ class Photo(BaseModel):
 
 class Params(BaseModel):
     geo: GeoPoint = GeoPoint()
+    distance: int = 125
     limit: int = 5
     skip: int = 0
 
