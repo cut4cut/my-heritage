@@ -64,7 +64,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Hand text input from user."""
     username = update.effective_user.username
-    logger.info(f"Get text='{update.message.text}' from user={username}")
     if update.message.text != MORE_PHOTO:
         await update.message.reply_text(NEED_SEND_GEO_MSG)
 
