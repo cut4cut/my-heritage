@@ -1,6 +1,6 @@
 from typing import List
 
-from heritage.exc import NoMorePhotos
+from heritage.exc import NoPhotos
 from heritage.entity import MediaPhoto
 from heritage.pkg import Params, PastvuAPI, GeoPoint
 
@@ -32,4 +32,4 @@ class MediaGroupUseCase:
         if group:
             return group
 
-        raise NoMorePhotos
+        raise NoPhotos

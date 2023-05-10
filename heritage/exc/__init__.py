@@ -1,3 +1,3 @@
-from heritage.exc.photo import NoMorePhotos
+from heritage.exc.photo import NoPhotos
 
-__all__ = ["NoMorePhotos"]
+__all__ = ["NoPhotos"]

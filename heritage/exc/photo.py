@@ -1,2 +1,2 @@
-class NoMorePhotos(Exception):
+class NoPhotos(Exception):
     pass

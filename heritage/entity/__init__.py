@@ -4,6 +4,7 @@ from heritage.entity.message import (
     START_MSG,
     INFO_MSG,
     NEED_SEND_GEO_MSG,
+    NO_PHOTOS_MSG,
     NO_MORE_PHOTOS_MSG,
     SOME_ERROR_MSG,
 )
@@ -13,6 +14,7 @@ __all__ = [
     "START_MSG",
     "INFO_MSG",
     "NEED_SEND_GEO_MSG",
+    "NO_PHOTOS_MSG",
     "NO_MORE_PHOTOS_MSG",
     "SOME_ERROR_MSG",
     "SEND_GEOPOSITION",

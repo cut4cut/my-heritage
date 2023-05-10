@@ -23,7 +23,7 @@ from telegram.ext import (
 from heritage.cfg import Settings
 from heritage.pkg import PastvuAPI
 from heritage.dto import SearchState
-from heritage.exc import NoMorePhotos
+from heritage.exc import NoPhotos
 from heritage.usecase import MediaGroupUseCase
 from heritage.entity import (
     SEND_GEOPOSITION,
@@ -31,6 +31,7 @@ from heritage.entity import (
     START_MSG,
     INFO_MSG,
     NEED_SEND_GEO_MSG,
+    NO_PHOTOS_MSG,
     NO_MORE_PHOTOS_MSG,
     SOME_ERROR_MSG,
 )
@@ -113,7 +114,7 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             ]
         )
         state.shift()
-    except NoMorePhotos:
+    except NoPhotos:
         await update.message.reply_text(NO_MORE_PHOTOS_MSG)
     except KeyError:
         await update.message.reply_text(NEED_SEND_GEO_MSG)
@@ -135,8 +136,8 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 for photo in use_case.get_photos(latitude, longitude)
             ]
         )
-    except NoMorePhotos:
-        await update.message.reply_text(NO_MORE_PHOTOS_MSG)
+    except NoPhotos:
+        await update.message.reply_text(NO_PHOTOS_MSG)
     except httpx.ReadTimeout:
         await update.message.reply_text(SOME_ERROR_MSG)
 
