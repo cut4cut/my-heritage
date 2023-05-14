@@ -1,6 +1,5 @@
 import html
 import json
-import logging
 import traceback
 
 import httpx
@@ -21,11 +20,12 @@ from telegram.ext import (
 )
 
 from heritage.cfg import Settings
-from heritage.pkg import PastvuAPI
+from heritage.pkg import PastvuAPI, BusinessLogger
 from heritage.dto import SearchState
 from heritage.exc import NoPhotos
 from heritage.usecase import MediaGroupUseCase
 from heritage.entity import (
+    UserStep,
     SEND_GEOPOSITION,
     MORE_PHOTO,
     START_MSG,
@@ -40,6 +40,7 @@ from heritage.entity import (
 api = PastvuAPI()
 settings = Settings()
 use_case = MediaGroupUseCase(api)
+logger = BusinessLogger("myheritage")
 
 keyboard = [
     [KeyboardButton(SEND_GEOPOSITION, request_location=True)],
@@ -47,16 +48,13 @@ keyboard = [
 ]
 reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(__name__)
 
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log the error and send a telegram message to notify the developer."""
     # Log the error before we do anything else, so we can see it even if something breaks.
-    logger.error("Exception while handling an update:", exc_info=context.error)
+    logger.logger.error(
+        f'{{"username": "{update.effective_user.username}", "exception": "{context.error}"}}'
+    )
 
     # traceback.format_exception returns the usual python message about an exception, but as a
     # list of strings rather than a single string, so we have to join them together.
@@ -85,6 +83,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
+    logger.info(step=UserStep.START, username=update.effective_user.username)
     await update.message.reply_html(
         START_MSG.format(update.effective_user.mention_html()),
         reply_markup=reply_markup,
@@ -93,6 +92,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
+    logger.info(step=UserStep.HELP, username=update.effective_user.username)
     await update.message.reply_text(INFO_MSG)
 
 
@@ -101,10 +101,21 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     username = update.effective_user.username
     if update.message.text != MORE_PHOTO:
         await update.message.reply_text(NEED_SEND_GEO_MSG)
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="Incorrect message.text",
+            username=update.effective_user.username,
+        )
+        return
 
     try:
         state = context.chat_data["state"]
-        logger.info(f"Current state={state} from user={username}")
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="Correct message.text",
+            username=username,
+            state=state.dict(),
+        )
         await update.message.reply_media_group(
             media=[
                 InputMediaPhoto(photo.file, caption=photo.caption)
@@ -114,12 +125,36 @@ async def hand_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             ]
         )
         state.shift()
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="Successfully sent",
+            username=username,
+            state=state.dict(),
+        )
     except NoPhotos:
         await update.message.reply_text(NO_MORE_PHOTOS_MSG)
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="No photos",
+            username=username,
+            state=state.dict(),
+        )
     except KeyError:
         await update.message.reply_text(NEED_SEND_GEO_MSG)
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="No state",
+            username=username,
+            state=state.dict(),
+        )
     except httpx.ReadTimeout:
         await update.message.reply_text(SOME_ERROR_MSG)
+        logger.info(
+            step=UserStep.GET_MORE,
+            case="ReadTimeout",
+            username=username,
+            state=state.dict(),
+        )
 
 
 async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -127,7 +162,12 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     latitude = update.message.location.latitude
     longitude = update.message.location.longitude
     username = update.effective_user.username
-    logger.info(f"Get location=({latitude}, {longitude}) from user={username}")
+    logger.info(
+        step=UserStep.GET,
+        case="Get new location",
+        username=username,
+        location={"latitude": latitude, "longitude": longitude},
+    )
     try:
         context.chat_data["state"] = SearchState(latitude=latitude, longitude=longitude)
         await update.message.reply_media_group(
@@ -136,10 +176,28 @@ async def get_photos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
                 for photo in use_case.get_photos(latitude, longitude)
             ]
         )
+        logger.info(
+            step=UserStep.GET,
+            case="Successfully sent",
+            username=username,
+            location={"latitude": latitude, "longitude": longitude},
+        )
     except NoPhotos:
         await update.message.reply_text(NO_PHOTOS_MSG)
+        logger.info(
+            step=UserStep.GET,
+            case="No photos",
+            username=username,
+            location={"latitude": latitude, "longitude": longitude},
+        )
     except httpx.ReadTimeout:
         await update.message.reply_text(SOME_ERROR_MSG)
+        logger.info(
+            step=UserStep.GET,
+            case="ReadTimeout",
+            username=username,
+            location={"latitude": latitude, "longitude": longitude},
+        )
 
 
 def main() -> None:
@@ -160,7 +218,7 @@ def main() -> None:
     )
 
     # error handler
-    application.add_error_handler(error_handler)
+    application.add_error_handler(error_handler)  # type: ignore
 
     application.run_polling()
 
